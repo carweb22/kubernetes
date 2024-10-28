@@ -3,6 +3,7 @@
 
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 
+<strong>test cert-manager</strong>
 kubectl get pods --namespace cert-manager
 
 <strong>now create this file and the paste the code</strong><br>
