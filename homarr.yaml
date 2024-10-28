@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: homarr-pv
+spec:
+  capacity:
+    storage: 1Gi  # Speichergröße, anpassbar
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /srv/homarr  # Pfad auf dem Host, wo die Daten gespeichert werden
+
+---
+# Persistent Volume Claim für Homarr
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: homarr-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi  # Gleiche Größe wie das PV
+
+---
+# Deployment für Homarr
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homarr
+  namespace: default
+  labels:
+    app: homarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homarr
+  template:
+    metadata:
+      labels:
+        app: homarr
+    spec:
+      containers:
+      - name: homarr
+        image: ghcr.io/ajnart/homarr:latest
+        ports:
+        - containerPort: 7575  # Standardport für Homarr
+        volumeMounts:
+        - name: homarr-storage
+          mountPath: /app/data/configs  # Pfad im Container, wo die Konfigurationen gespeichert werden
+      volumes:
+      - name: homarr-storage
+        persistentVolumeClaim:
+          claimName: homarr-pvc  # Verknüpfung mit dem PVC
+
+---
+# Service für Homarr
+apiVersion: v1
+kind: Service
+metadata:
+  name: homarr-service
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7575
+      targetPort: 7575
+  selector:
+    app: homarr
+
+---
+# Ingress für Homarr mit Traefik und Let's Encrypt
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homarr-ingress
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  tls:
+  - hosts:
+    - homarr.mydomain.com
+    secretName: homarr-tls  # TLS-Zertifikatname für Let's Encrypt
+  rules:
+  - host: homarr.mydomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: homarr-service
+            port:
+              number: 7575
