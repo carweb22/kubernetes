@@ -10,7 +10,7 @@ cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
 
 export KUBECONFIG=~/.kube/config
 
-<strong>Test it</strong>
+<strong>Test it</strong><br>
 kubectl
 
 <strong>Now to the app!!!</strong>
