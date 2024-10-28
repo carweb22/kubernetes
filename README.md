@@ -15,3 +15,5 @@ k apply -f letsencrypt-clusterissuer.yml
 wordpress.yaml
 
 k apply -f wordpress.yaml
+
+<strong>go to your domain and you will see the wordpress "create new site"</strong>
