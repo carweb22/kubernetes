@@ -32,4 +32,4 @@ k apply -f wordpress.yaml
 
 <strong>go to your domain and you will see the wordpress "create new site"</strong>
 
-<strong>I have another app "homarr", copy the homarr code and update your domain, after taht deploy it :)</strong>
+<strong>I have another app for your kubernetes 'Homarr.' Copy the Homarr code, update the 2 domains in the code, and then deploy it. 😊</strong>
