@@ -1,0 +1,189 @@
+# Persistent Volume Claim für WordPress
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wp-pvc
+  labels:
+    app: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+# ConfigMap für PHP-Einstellungen (upload_max_filesize, post_max_size, memory_limit)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: php-config
+  namespace: default
+data:
+  php.ini: |
+    memory_limit = 256M
+    upload_max_filesize = 1024M
+    post_max_size = 1024M
+
+---
+
+
+# Persistent Volume Claim für MariaDB
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mariadb-pvc
+  labels:
+    app: mariadb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Deployment für MariaDB
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.5
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: mypass
+            - name: MYSQL_DATABASE
+              value: wordpress
+            - name: MYSQL_USER
+              value: wordpressuser
+            - name: MYSQL_PASSWORD
+              value: wordpresspass
+          volumeMounts:
+            - name: mariadb-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mariadb-persistent-storage
+          persistentVolumeClaim:
+            claimName: mariadb-pvc
+
+---
+# Deployment für WordPress
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  replicas: 2  # Zwei Replikate für hohe Verfügbarkeit
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+        - name: wordpress
+          image: wordpress:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: mariadb:3306
+            - name: WORDPRESS_DB_USER
+              value: wordpressuser
+            - name: WORDPRESS_DB_PASSWORD
+              value: wordpresspass
+            - name: WORDPRESS_DB_NAME
+              value: wordpress
+          volumeMounts:
+            - name: wordpress-persistent-storage
+              mountPath: /var/www/html
+            - name: php-config-volume
+              mountPath: /usr/local/etc/php/conf.d/php.ini
+              subPath: php.ini
+      volumes:
+        - name: wordpress-persistent-storage
+          persistentVolumeClaim:
+            claimName: wp-pvc
+        - name: php-config-volume
+          configMap:
+            name: php-config
+
+---
+# Service für MariaDB
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  labels:
+    app: mariadb
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: mariadb
+  clusterIP: None
+
+---
+# Service für WordPress
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: wordpress
+
+---
+# Ingress für WordPress mit Traefik und automatischer SSL-Unterstützung
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress-ingress
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  tls:
+  - hosts:
+    - mywebsite.com
+    secretName: wordpress-tls
+  rules:
+  - host: mywebsite.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wordpress
+            port:
+              number: 80
