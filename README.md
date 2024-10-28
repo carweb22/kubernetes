@@ -1,5 +1,5 @@
 <h1><strong>Deploy Wordpress with Nginx as Loadbalancer, SSL and persistent Volumen</strong></h1><br>
-<strong>first you need a working minikube</strong><br>
+<strong>first you need a working minikube after that you can deploy the cert-manager.yaml</strong><br>
 
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 
