@@ -11,7 +11,7 @@ letsencrypt-clusterissuer.yaml
 
 k apply -f letsencrypt-clusterissuer.yml
 
-<strong>after deploy the letsencrypt-clusterissuer.yaml now you can create the second file</strong> 
+<strong>after deploy the letsencrypt-clusterissuer.yaml now you can create the second file</strong><br>
 wordpress.yaml
 
 k apply -f wordpress.yaml
